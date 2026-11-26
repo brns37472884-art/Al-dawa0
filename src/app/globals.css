@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy: #103b5a;
+  --color-navy-deep: #0b3554;
+  --color-medblue: #087eae;
+  --color-medblue-dark: #06688f;
+  --color-cyan: #35b8c8;
+  --color-mint: #62d8d2;
+  --color-lightblue: #eaf6fb;
+  --color-bg: #f7fafc;
+  --color-ink: #17324b;
+  --color-muted: #6e8192;
+  --color-line: #e4edf3;
+  --color-success: #21865a;
+  --color-warning: #d99a27;
+  --color-urgent: #c84040;
+  --font-sans: "Cairo", "Segoe UI", Tahoma, sans-serif;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.7;
+}
+
+h1, h2, h3 {
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+/* مساعدات RTL/LTR */
+.flip-x:where([dir="rtl"]) svg {
+  transform: scaleX(-1);
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(8, 126, 174, 0.10) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+.hero-gradient {
+  background: linear-gradient(115deg, #0b3554 0%, #0c577c 60%, #087f9e 100%);
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, #103b5a, #087eae);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(16, 59, 90, 0.12);
+}
+
+.chart-wrap {
+  direction: ltr;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c7d8e4;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

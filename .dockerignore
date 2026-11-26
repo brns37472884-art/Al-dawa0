@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+uploads
+coverage
+*.log
+*.tsbuildinfo
+docs
+tests/e2e/artifacts
