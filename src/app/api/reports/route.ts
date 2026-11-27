@@ -85,8 +85,12 @@ export async function POST(req: NextRequest) {
   if (file.size > REPORT_MAX_SIZE) return jsonError("FILE_TOO_LARGE", 400, { maxMB: 15 });
 
   // حد تقارير الباقة (نتائج المعمل مستثناة بالإعداد)
-  const sub = await db.subscription.findFirst({ where: { userId: user.id, status: "ACTIVE" }, orderBy: { startedAt: "desc" } });
-  const plan = sub ? await db.plan.findUnique({ where: { key: sub.planKey } }) : null;
+  // الاشتراك المنتهي (expiresAt في الماضي) يُعامل كباقة مجانية بدل أن يبقى مفتوحًا للأبد
+  const sub = await db.subscription.findFirst({
+    where: { userId: user.id, status: "ACTIVE", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    orderBy: { startedAt: "desc" },
+  });
+  const plan = await db.plan.findUnique({ where: { key: sub?.planKey ?? "FREE" } });
   if (plan && plan.reportsLimit >= 0) {
     const monthStart = new Date();
     monthStart.setDate(1);

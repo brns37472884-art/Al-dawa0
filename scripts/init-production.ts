@@ -33,12 +33,21 @@ if (password.length < 12 || !/[a-zA-Z]/.test(password) || !/\d/.test(password)) 
 async function main() {
   console.log("⚙️  init-production…");
   const existing = await db.user.findUnique({ where: { email } });
+  const salt = crypto.randomBytes(16).toString("hex");
+  const key = crypto.scryptSync(password, salt, 64);
   if (existing) {
+    // ADMIN_FORCE_RESET=true: يعيد ضبط كلمة المرور لهذا البريد ويُنهي الجلسات القديمة. احذف المتغير بعد أول نشر.
+    if (process.env.ADMIN_FORCE_RESET === "true") {
+      await db.user.update({
+        where: { id: existing.id },
+        data: { passwordHash: `${salt}:${key.toString("hex")}`, role: "ADMIN", isActive: true, tokenVersion: { increment: 1 } },
+      });
+      console.log(`🔑 أُعيد ضبط كلمة مرور الأدمن (${email}) — احذف ADMIN_FORCE_RESET من المتغيرات الآن.`);
+      return;
+    }
     console.log("الأدمن موجود بالفعل — لا تغيير.");
     return;
   }
-  const salt = crypto.randomBytes(16).toString("hex");
-  const key = crypto.scryptSync(password, salt, 64);
   await db.user.create({
     data: {
       email,

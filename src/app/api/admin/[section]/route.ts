@@ -13,7 +13,7 @@ import { isStrongPassword, normalizePhone } from "@/lib/helpers";
  * لا تُعرض هنا نتائج مرضى ولا آراء أطباء إطلاقًا.
  */
 
-const SECTIONS = ["stats", "users", "doctors", "labs", "markaz", "plans", "payments", "settings", "audit", "contact", "protocols", "rules", "alerts", "network", "broadcast"] as const;
+const SECTIONS = ["stats", "users", "doctors", "labs", "markaz", "plans", "payments", "payment-requests", "settings", "audit", "contact", "protocols", "rules", "alerts", "network", "broadcast"] as const;
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ section: string }> }) {
   const user = await requireCapability("admin:manage");
@@ -111,6 +111,28 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ section: s
     });
     return jsonOk({
       payments: payments.map((p) => ({ id: p.id, amount: p.amount, planKey: p.planKey, method: p.method, note: p.note, createdAt: p.createdAt, userEmail: p.user.email, userName: p.user.fullName })),
+    });
+  }
+
+  if (section === "payment-requests") {
+    // بدون proofData — الصورة تُجلب من /api/payments/requests/[id]/proof
+    const rows = await db.paymentRequest.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: {
+        id: true, planKey: true, amountEgp: true, method: true, senderRef: true, proofMime: true, proofSize: true,
+        status: true, reviewNote: true, createdAt: true, reviewedAt: true,
+        user: { select: { email: true, fullName: true, phone: true } },
+      },
+    });
+    rows.sort((a, b) => Number(b.status === "PENDING") - Number(a.status === "PENDING")); // المعلّقة أولًا (الفرز ثابت)
+    return jsonOk({
+      pendingCount: rows.filter((r) => r.status === "PENDING").length,
+      requests: rows.map((r) => ({
+        id: r.id, planKey: r.planKey, amountEgp: r.amountEgp, method: r.method, senderRef: r.senderRef, proofMime: r.proofMime, proofSize: r.proofSize,
+        status: r.status, reviewNote: r.reviewNote, createdAt: r.createdAt, reviewedAt: r.reviewedAt,
+        userName: r.user.fullName, userEmail: r.user.email, userPhone: r.user.phone,
+      })),
     });
   }
 
@@ -330,10 +352,53 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ section: s
     return jsonOk({ ok: true }, 201);
   }
 
+  // ---------- payment-requests: مراجعة إيصالات الدفع اليدوي ----------
+  if (section === "payment-requests" && op === "review") {
+    const id = String(body.id ?? "");
+    const decision = String(body.decision ?? "");
+    if (decision !== "APPROVE" && decision !== "REJECT") return jsonError("INVALID_VALUE", 400);
+    const note = String(body.note ?? "").trim().slice(0, 300) || null;
+    const row = await db.paymentRequest.findUnique({ where: { id }, select: { id: true, userId: true, planKey: true, amountEgp: true, method: true } });
+    if (!row) return jsonError("NOT_FOUND", 404);
+    const approve = decision === "APPROVE";
+    const done = await db.$transaction(async (tx) => {
+      // حجز الطلب ذريًا: لا يُراجَع مرتين لو ضغط مديران في نفس اللحظة
+      const claimed = await tx.paymentRequest.updateMany({
+        where: { id, status: "PENDING" },
+        data: { status: approve ? "APPROVED" : "REJECTED", reviewNote: note, reviewedById: user.id, reviewedAt: new Date() },
+      });
+      if (claimed.count !== 1) return false;
+      if (approve) {
+        const payment = await tx.payment.create({
+          data: { userId: row.userId, amount: row.amountEgp, planKey: row.planKey, method: row.method, status: "PAID", note: `طلب دفع يدوي ${row.id}` },
+        });
+        await tx.subscription.updateMany({ where: { userId: row.userId, status: "ACTIVE" }, data: { status: "CANCELLED" } });
+        await tx.subscription.create({ data: { userId: row.userId, planKey: row.planKey, status: "ACTIVE", expiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000) } });
+        await tx.paymentRequest.update({ where: { id }, data: { paymentId: payment.id } });
+      }
+      await tx.notification.create({
+        data: {
+          userId: row.userId,
+          type: approve ? "PAYMENT_APPROVED" : "PAYMENT_REJECTED",
+          titleAr: approve ? "تم تفعيل اشتراكك" : "تعذّر قبول إيصال الدفع",
+          titleEn: approve ? "Your subscription is active" : "Payment receipt was not accepted",
+          bodyAr: approve ? "تمت مراجعة إيصال الدفع وتفعيل باقتك لمدة 30 يومًا." : `لم نتمكن من قبول إيصال الدفع.${note ? ` السبب: ${note}` : ""} يمكنك إرسال إيصال جديد.`,
+          bodyEn: approve ? "Your payment receipt was reviewed and your plan is active for 30 days." : `We could not accept the receipt.${note ? ` Reason: ${note}` : ""} You can submit a new one.`,
+          severity: approve ? "INFO" : "WARNING",
+          link: "/app/subscription",
+        },
+      });
+      return true;
+    });
+    if (!done) return jsonError("ALREADY_REVIEWED", 409);
+    await logAudit(approve ? "PAYMENT_REQUEST_APPROVE" : "PAYMENT_REQUEST_REJECT", { req, actorUserId: user.id, actorRole: user.role, entityType: "PaymentRequest", entityId: id, meta: { planKey: row.planKey, amount: row.amountEgp } });
+    return jsonOk({ ok: true });
+  }
+
   // ---------- settings ----------
   if (section === "settings" && op === "update") {
     const key = String(body.key ?? "");
-    const value = String(body.value ?? "").trim().slice(0, 60);
+    const value = String(body.value ?? "").trim().slice(0, String(body.key ?? "").startsWith("PAY_") ? 300 : 60);
     if (!(key in SETTING_DEFAULTS)) return jsonError("UNKNOWN_SETTING", 400);
     const numericKeys = ["DOCTOR_SLA_HOURS", "LAB_SLA_HOURS", "PENDING_CLAIM_EXPIRY_DAYS", "LAB_DAILY_UPLOAD_LIMIT"];
     const boolKeys = ["ALLOW_PATIENT_UPLOAD", "LAB_RESULTS_EXEMPT_FROM_LIMIT"];

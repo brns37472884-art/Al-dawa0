@@ -148,3 +148,15 @@ npx tsx scripts/init-production.ts
 - اتصال BullMQ بـ Redis يُفكّك من `REDIS_URL` صراحة مع `family:0` (IPv4+IPv6) — شبكة Railway الداخلية قد تكون IPv6.
 - مساران رفع الملفات (`/api/reports`, `/api/lab/results`) مستثنيان من الـ middleware لتفادي اقتطاع الجسم عند 10MB، وفحص Origin داخلهما.
 - إعادة تشغيل تلقائية للخدمتين عند الفشل (`restartPolicyType`).
+
+### الدفع اليدوي للباقات + مفاتيح التشغيل
+
+- **الباقات** (FREE 0 / PLUS 250 / FAMILY 500) تُنشأ تلقائيًا في Pre-deploy (`scripts/ensure-plans.ts`) ولا تُستبدل تعديلات الإدارة.
+- **العميل:** `/app/subscription` → يختار الباقة وطريقة الدفع (كاش / إنستا باي / تحويل بنكي) ويرفع صورة الإيصال (JPG/PNG/PDF ≤ 5MB).
+  الصورة تُحفظ في قاعدة البيانات (لا تحتاج S3 ولا تضيع عند إعادة النشر).
+- **الأدمن:** تبويب «إيصالات الدفع» → قبول (يفعّل الاشتراك 30 يومًا ويسجّل دفعة ويُرسل إشعارًا) أو رفض بسبب.
+- **بيانات التحويل** (رقم المحفظة / عنوان إنستا باي / الحساب البنكي) تُكتب من الأدمن ← الإعدادات: `PAY_CASH_INFO` و`PAY_INSTAPAY_INFO` و`PAY_BANK_INFO`.
+- **مفاتيح التشغيل (Railway Variables):**
+  - `EMAIL_VERIFICATION_REQUIRED` — الافتراضي `false` (التسجيل بلا OTP).
+  - `MFA_EMAIL_REQUIRED` — الافتراضي `true`. على Railway بلا SMTP ضعه `false` مؤقتًا وإلا لن يستطيع الأدمن الدخول (الرمز يُرسل بالبريد فقط).
+  - `ADMIN_FORCE_RESET=true` مع `ADMIN_EMAIL`/`ADMIN_PASSWORD` يعيد ضبط كلمة مرور الأدمن في النشر التالي — احذفه بعدها.

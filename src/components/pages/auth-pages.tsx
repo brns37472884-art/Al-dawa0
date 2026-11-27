@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n";
 import { roleHome } from "@/hooks/use-session";
@@ -110,6 +110,11 @@ export function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [demoCode, setDemoCode] = useState<string | null>(null);
+  // التحقق من البريد عند التسجيل مفتاح تشغيل من السيرفر (EMAIL_VERIFICATION_REQUIRED) — الافتراضي مُعطَّل
+  const [needOtp, setNeedOtp] = useState(false);
+  useEffect(() => {
+    api<{ emailVerificationRequired?: boolean }>("/api/config").then((c) => setNeedOtp(c.emailVerificationRequired === true)).catch(() => {});
+  }, []);
 
   const [f, setF] = useState({
     fullName: "", email: "", phone: "", password: "", confirmPassword: "", otp: "",
@@ -155,7 +160,7 @@ export function RegisterPage() {
         body: {
           fullName: f.fullName, email: f.email, phone: f.phone, password: f.password,
           dob: f.dob, gender: f.gender, gov: f.gov, city: f.city, emergencyContact: f.emergency,
-          otp: f.otp,
+          otp: needOtp ? f.otp : "",
           consents: { data: f.cData, ai: f.cAI, doctor: f.cDoctor, labShare: f.cLab, notifications: f.cNotif },
         },
       });
@@ -190,16 +195,16 @@ export function RegisterPage() {
                   <Label htmlFor="r-email">{t("auth.email")}</Label>
                   <div className="flex gap-2">
                     <Input id="r-email" type="email" dir="ltr" required value={f.email} onChange={(e) => set("email", e.target.value)} />
-                    <Button type="button" variant="soft" disabled={busy || !f.email} onClick={sendOtp}>{t("auth.sendOtp")}</Button>
+                    {needOtp && <Button type="button" variant="soft" disabled={busy || !f.email} onClick={sendOtp}>{t("auth.sendOtp")}</Button>}
                   </div>
-                  {demoCode && (
+                  {needOtp && demoCode && (
                     <div className="mt-2 rounded-xl border border-dashed border-medblue bg-lightblue p-2.5 text-center">
                       <span dir="ltr" className="text-xl font-extrabold tracking-[0.3em] text-medblue-dark">{demoCode}</span>
                       <span className="ms-3 text-[11px] text-muted">{t("auth.demoCodeNote")}</span>
                     </div>
                   )}
                 </div>
-                <div><Label htmlFor="r-otp">{t("auth.otpLabel")}</Label><Input id="r-otp" dir="ltr" inputMode="numeric" maxLength={6} required value={f.otp} onChange={(e) => set("otp", e.target.value.replace(/\D/g, ""))} className="text-center text-lg tracking-[0.4em]" /></div>
+                {needOtp && <div><Label htmlFor="r-otp">{t("auth.otpLabel")}</Label><Input id="r-otp" dir="ltr" inputMode="numeric" maxLength={6} required value={f.otp} onChange={(e) => set("otp", e.target.value.replace(/\D/g, ""))} className="text-center text-lg tracking-[0.4em]" /></div>}
                 <div><Label htmlFor="r-phone">{t("auth.phone")}</Label><Input id="r-phone" dir="ltr" inputMode="numeric" placeholder="01xxxxxxxxx" required value={f.phone} onChange={(e) => set("phone", e.target.value)} /><p className="mt-1 text-xs text-muted">{t("auth.phoneHint")}</p></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label htmlFor="r-pass">{t("auth.password")}</Label><Input id="r-pass" type="password" required value={f.password} onChange={(e) => set("password", e.target.value)} /></div>
@@ -261,11 +266,11 @@ export function RegisterPage() {
                 {error && <ErrMsg code={error} />}
                 <div className="flex gap-2 pt-2">
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>{t("common.back")}</Button>
-                  <Button type="submit" className="flex-1" disabled={busy || !(f.cData && f.cAI && f.cDoctor && f.cLab) || f.otp.length !== 6}>{t("auth.createAccount")}</Button>
+                  <Button type="submit" className="flex-1" disabled={busy || !(f.cData && f.cAI && f.cDoctor && f.cLab) || (needOtp && f.otp.length !== 6)}>{t("auth.createAccount")}</Button>
                 </div>
               </form>
             )}
-            {demoCode && (
+            {needOtp && demoCode && (
               <p className="mt-4 flex items-center gap-1.5 text-[11px] text-muted"><AlertCircle className="h-3.5 w-3.5" />{t("auth.demoAccounts")}</p>
             )}
           </CardContent>

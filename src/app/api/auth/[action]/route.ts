@@ -11,6 +11,7 @@ import { kvSet, kvGet, kvDel } from "@/lib/redis";
 import { hashCode, codeMatches } from "@/lib/crypto-file";
 import { sendOtpEmail, sendMfaEmail } from "@/lib/email";
 import { logAudit, readJson } from "@/lib/api-utils";
+import { emailVerificationRequired, mfaEmailRequired } from "@/lib/flags";
 import { normalizePhone, isStrongPassword, isValidEmail } from "@/lib/helpers";
 
 /**
@@ -26,6 +27,7 @@ function emailValid(e: string): boolean {
 
 /** متطلبات MFA: DOCTOR (لو مفعّل) + LAB/LAB_SUPERVISOR + MEDICAL_OFFICER + ADMIN */
 async function needsMfa(role: string, userId: string): Promise<boolean> {
+  if (!mfaEmailRequired()) return false; // MFA_EMAIL_REQUIRED=false — مؤقتًا حتى ضبط مزود بريد
   if (role === "LAB" || role === "LAB_SUPERVISOR" || role === "MEDICAL_OFFICER" || role === "ADMIN") return true;
   if (role === "DOCTOR") {
     const p = await db.doctorProfile.findUnique({ where: { userId } });
@@ -79,24 +81,27 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ action: st
     if (!phone) return jsonError("INVALID_PHONE", 400);
     if (!isStrongPassword(password)) return jsonError("WEAK_PASSWORD", 400);
     if (gender !== "MALE" && gender !== "FEMALE") return jsonError("INVALID_GENDER", 400);
-    if (!otp) return jsonError("OTP_MISSING", 400);
+    const verifyEmail = emailVerificationRequired(); // EMAIL_VERIFICATION_REQUIRED — الافتراضي false
+    if (verifyEmail && !otp) return jsonError("OTP_MISSING", 400);
 
     const dob = dobRaw ? new Date(dobRaw) : null;
     if (!dob || Number.isNaN(dob.getTime()) || dob.getTime() > Date.now() || dob.getTime() < new Date("1900-01-01").getTime()) {
       return jsonError("INVALID_DOB", 400);
     }
 
-    const rec = await kvGet(`otp:${email}`);
-    if (!rec) return jsonError("OTP_EXPIRED", 401);
-    const parsed = JSON.parse(rec) as { h: string; tries: number };
-    if (parsed.tries >= 5) {
-      await kvDel(`otp:${email}`);
-      return jsonError("OTP_EXPIRED", 429);
-    }
-    if (!codeMatches(otp, parsed.h)) {
-      parsed.tries += 1;
-      await kvSet(`otp:${email}`, JSON.stringify(parsed), 10 * 60 * 1000);
-      return jsonError("OTP_INVALID", 401);
+    if (verifyEmail) {
+      const rec = await kvGet(`otp:${email}`);
+      if (!rec) return jsonError("OTP_EXPIRED", 401);
+      const parsed = JSON.parse(rec) as { h: string; tries: number };
+      if (parsed.tries >= 5) {
+        await kvDel(`otp:${email}`);
+        return jsonError("OTP_EXPIRED", 429);
+      }
+      if (!codeMatches(otp, parsed.h)) {
+        parsed.tries += 1;
+        await kvSet(`otp:${email}`, JSON.stringify(parsed), 10 * 60 * 1000);
+        return jsonError("OTP_INVALID", 401);
+      }
     }
 
     for (const c of ["data", "ai", "doctor", "labShare"]) {
@@ -117,7 +122,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ action: st
             fullName,
             role: "PATIENT",
             phoneVerifiedAt: new Date(),
-            emailVerifiedAt: new Date(),
+            emailVerifiedAt: verifyEmail ? new Date() : null,
             patientProfile: { create: { dateOfBirth: dob, gender, gov, city, emergencyContact } },
             subscriptions: {
               create: { planKey: "FREE", status: "ACTIVE" },
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ action: st
         }
         return u;
       });
-      await kvDel(`otp:${email}`);
+      if (verifyEmail) await kvDel(`otp:${email}`);
       await logAudit("REGISTER", { req, actorUserId: user.id, actorRole: "PATIENT" });
       const token = await setSessionCookie({ id: user.id, role: user.role, tokenVersion: user.tokenVersion, labId: user.labId });
       return jsonOk({ user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role }, ...(demo ? { sessionToken: token } : {}) });

@@ -29,6 +29,21 @@ export const SETTING_DEFAULTS = {
     noteAr: "تُحذف النتائج غير المستلمة تلقائيًا بعد هذه المدة (يوم)",
     noteEn: "Unclaimed pending results expire after this many days",
   },
+  PAY_CASH_INFO: {
+    value: "",
+    noteAr: "تعليمات الدفع كاش (رقم المحفظة الإلكترونية واسم المستلم) — تظهر للعميل عند الاشتراك",
+    noteEn: "Cash / e-wallet payment instructions shown to the customer",
+  },
+  PAY_INSTAPAY_INFO: {
+    value: "",
+    noteAr: "تعليمات الدفع عبر إنستا باي (عنوان الدفع IPA أو الرقم) — تظهر للعميل عند الاشتراك",
+    noteEn: "InstaPay payment instructions shown to the customer",
+  },
+  PAY_BANK_INFO: {
+    value: "",
+    noteAr: "بيانات التحويل البنكي (اسم البنك، اسم الحساب، رقم الحساب/IBAN) — تظهر للعميل عند الاشتراك",
+    noteEn: "Bank transfer details shown to the customer",
+  },
   LAB_DAILY_UPLOAD_LIMIT: {
     value: "200",
     noteAr: "أقصى عدد نتائج يمكن للمعمل رفعها يوميًا",

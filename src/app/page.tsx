@@ -65,7 +65,7 @@ function Packages() {
                     ))}
                   </ul>
                   <Button asChild className="mt-6 w-full" variant={popular ? "default" : "outline"}>
-                    <a href="/register">{t("packages.choose")}</a>
+                    <a href={p && p.priceEgp > 0 ? `/app/subscription?plan=${encodeURIComponent(p.key)}` : "/register"}>{t("packages.choose")}</a>
                   </Button>
                 </CardContent>
               </Card>

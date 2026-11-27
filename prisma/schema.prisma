@@ -76,6 +76,7 @@ model User {
   notifications    Notification[]
   subscriptions    Subscription[]
   payments         Payment[]
+  paymentRequests  PaymentRequest[]
   chatMessages     ChatMessage[]
   auditLogs        AuditLog[]
   aiInteractions   AiInteraction[]
@@ -690,6 +691,30 @@ model Payment {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+}
+
+/// طلب اشتراك بدفع يدوي: العميل يحوّل المبلغ (كاش/إنستا باي/تحويل بنكي) ويرفع صورة الإيصال، والإدارة تراجع وتفعّل.
+/// صورة الإيصال تُحفظ في قاعدة البيانات نفسها (≤5MB) فلا تعتمد على S3 ولا تضيع عند إعادة النشر.
+model PaymentRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planKey      String
+  amountEgp    Float
+  method       String // CASH | INSTAPAY | BANK_TRANSFER
+  senderRef    String?
+  proofData    Bytes
+  proofMime    String
+  proofSize    Int
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewNote   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  paymentId    String?
+  createdAt    DateTime  @default(now())
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ---------------- الذكاء الاصطناعي ----------------

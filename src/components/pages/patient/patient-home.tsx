@@ -15,6 +15,7 @@ export const PATIENT_NAV = (t: (k: string) => string) => [
   { href: "/app/records", label: t("shell.nav.records"), icon: "records" },
   { href: "/app/trends", label: t("shell.nav.trends"), icon: "trends" },
   { href: "/app/orders", label: t("shell.nav.orders"), icon: "orders" },
+  { href: "/app/subscription", label: t("shell.nav.subscription"), icon: "subscription" },
   { href: "/app/family", label: t("shell.nav.family"), icon: "family" },
   { href: "/app/notifications", label: t("shell.nav.notifications"), icon: "notifications" },
   { href: "/app/consents", label: t("shell.nav.consents"), icon: "consents" },

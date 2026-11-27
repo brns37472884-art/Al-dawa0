@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/overlays";
 import { LoadingBlock, StatCard, StatusBadge } from "@/components/shared/common";
 
 const ADMIN_NAV = (t: (k: string) => string) => [{ href: "/admin", label: t("shell.admin") }];
-const TABS = ["overview", "users", "doctors", "labs", "markaz", "plans", "payments", "broadcast", "settings", "audit", "contact", "protocols", "alerts", "network"] as const;
+const TABS = ["overview", "users", "doctors", "labs", "markaz", "plans", "payments", "payment-requests", "broadcast", "settings", "audit", "contact", "protocols", "alerts", "network"] as const;
 
 export function AdminDashboardPage() {
   const { t, lang } = useLang();
@@ -131,6 +131,7 @@ export function AdminDashboardPage() {
       )}
 
       {tab === "payments" && <PaymentsTab data={data} post={post} />}
+      {tab === "payment-requests" && <PaymentRequestsTab data={data} post={post} />}
 
       {tab === "broadcast" && <BroadcastTab post={post} />}
 
@@ -304,6 +305,49 @@ function PaymentsTab({ data, post }: { data: Record<string, unknown>; post: (op:
           ))}
         </tbody>
       </Table>
+    </div>
+  );
+}
+
+function PaymentRequestsTab({ data, post }: { data: Record<string, unknown>; post: (op: string, body: Record<string, unknown>) => Promise<boolean> }) {
+  const { t, lang } = useLang();
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const rows = (data.requests as Array<{ id: string; planKey: string; amountEgp: number; method: string; senderRef: string | null; proofMime: string; status: string; reviewNote: string | null; createdAt: string; userName: string; userEmail: string; userPhone: string | null }>) ?? [];
+  const tone = (s: string) => (s === "APPROVED" ? "success" : s === "REJECTED" ? "urgent" : "warning") as "success" | "urgent" | "warning";
+  if (!rows.length) return <p className="rounded-xl bg-lightblue p-4 text-sm text-muted">{t("a.payreq.empty")}</p>;
+  return (
+    <div className="space-y-3">
+      <p className="rounded-xl bg-lightblue p-3 text-xs text-muted">{t("a.payreq.note")}</p>
+      {rows.map((r) => (
+        <Card key={r.id}><CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_auto]">
+          <div className="space-y-1 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-navy">{r.userName}</span>
+              <span dir="ltr" className="text-xs text-muted">{r.userEmail}{r.userPhone ? ` · ${r.userPhone}` : ""}</span>
+              <Badge tone={tone(r.status)}>{t(`sub.status.${r.status}`)}</Badge>
+            </div>
+            <div>{r.planKey} — <b>{fmtNumber(r.amountEgp, lang)}</b> {t("packages.currency")} · {t(`sub.method.${r.method}`)}</div>
+            {r.senderRef && <div className="text-xs text-muted">{t("sub.ref")}: <span dir="auto">{r.senderRef}</span></div>}
+            <div className="text-xs text-muted">{fmtDate(r.createdAt, lang)}</div>
+            {r.reviewNote && <div className="text-xs text-muted">{r.reviewNote}</div>}
+            {r.status === "PENDING" && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Input className="w-56" placeholder={t("a.payreq.reason")} value={notes[r.id] ?? ""} onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })} />
+                <Button size="sm" variant="success" onClick={() => post("review", { id: r.id, decision: "APPROVE", note: notes[r.id] ?? "" })}>{t("a.payreq.approve")}</Button>
+                <Button size="sm" variant="outline" onClick={() => post("review", { id: r.id, decision: "REJECT", note: notes[r.id] ?? "" })}>{t("a.payreq.reject")}</Button>
+              </div>
+            )}
+          </div>
+          <a href={`/api/payments/requests/${r.id}/proof`} target="_blank" rel="noopener noreferrer" className="block w-40">
+            {r.proofMime.startsWith("image/") ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`/api/payments/requests/${r.id}/proof`} alt={t("a.payreq.proof")} className="max-h-40 w-40 rounded-xl border border-line object-contain" />
+            ) : (
+              <span className="flex h-24 items-center justify-center rounded-xl border border-line bg-lightblue text-xs font-bold text-medblue-dark">PDF — {t("a.payreq.open")}</span>
+            )}
+          </a>
+        </CardContent></Card>
+      ))}
     </div>
   );
 }
