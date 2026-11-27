@@ -340,6 +340,7 @@ export const ar = {
   "auth.err.INVALID_GENDER": "اختر الجنس",
   "auth.err.OTP_MISSING": "أدخل رمز التحقق أولًا",
   "auth.err.REGISTER_FAILED": "تعذر إنشاء الحساب — راجع البيانات",
+  "auth.err.ORIGIN_FORBIDDEN": "تعذّر إتمام الطلب — افتح الموقع من رابطه الرسمي (تنبيه للإدارة: تحقق من PUBLIC_BASE_URL)",
   // ---------- شارات الحالات ----------
   "status.UPLOADED": "بانتظار المعالجة",
   "status.PROCESSING": "جارٍ الاستخراج",
@@ -992,6 +993,15 @@ export const ar = {
   "a.payreq.proof": "إيصال الدفع",
   "a.payreq.open": "فتح",
   "config.error": "تعذر تحميل الإعدادات",
+  "a.users.createTitle": "إضافة حساب دكتور أو مسؤول طبي",
+  "a.users.createRole": "الدور",
+  "a.users.roleDOCTOR": "دكتور",
+  "a.users.roleMEDICAL_OFFICER": "مسؤول طبي",
+  "a.users.specialty": "التخصص",
+  "a.users.license": "رقم الترخيص",
+  "a.users.newPassword": "كلمة المرور (8+ أحرف بها حرف ورقم)",
+  "a.users.createBtn": "إنشاء الحساب",
+  "a.users.createNote": "حساب الدكتور يُنشأ موثّقًا. حسابات المعمل تُضاف من تبويب المعامل.",
   "e2e.note": "بيانات هذه الشاشة تجريبية للاختبار",
 } as const;
 

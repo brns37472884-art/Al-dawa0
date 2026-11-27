@@ -63,6 +63,7 @@ export function AdminDashboardPage() {
 
       {tab === "users" && (
         <div className="space-y-3">
+          <CreateUserForm post={post} />
           <Input placeholder={t("a.users.search")} value={q} onChange={(e) => setQ(e.target.value)} />
           <Table>
             <THead><TR><TH>{t("auth.fullName")}</TH><TH>{t("auth.email")}</TH><TH>{t("a.users.role")}</TH><TH>{t("a.users.status")}</TH><TH>—</TH></TR></THead>
@@ -306,6 +307,33 @@ function PaymentsTab({ data, post }: { data: Record<string, unknown>; post: (op:
         </tbody>
       </Table>
     </div>
+  );
+}
+
+function CreateUserForm({ post }: { post: (op: string, body: Record<string, unknown>) => Promise<boolean> }) {
+  const { t } = useLang();
+  const empty = { role: "DOCTOR", fullName: "", email: "", password: "", specialty: "", licenseNumber: "" };
+  const [f, setF] = useState(empty);
+  const isDoctor = f.role === "DOCTOR";
+  const ready = f.fullName.trim().length >= 3 && f.email && f.password && (!isDoctor || (f.specialty && f.licenseNumber));
+  return (
+    <Card><CardContent className="space-y-3 p-4">
+      <div className="font-bold text-navy">{t("a.users.createTitle")}</div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div><Label>{t("a.users.createRole")}</Label>
+          <Select value={f.role} onValueChange={(v) => setF({ ...f, role: v })} options={["DOCTOR", "MEDICAL_OFFICER"].map((r) => ({ value: r, label: t(`a.users.role${r}`) }))} />
+        </div>
+        <div><Label>{t("auth.fullName")}</Label><Input value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} /></div>
+        <div><Label>{t("auth.email")}</Label><Input dir="ltr" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+        {isDoctor && <div><Label>{t("a.users.specialty")}</Label><Input value={f.specialty} onChange={(e) => setF({ ...f, specialty: e.target.value })} /></div>}
+        {isDoctor && <div><Label>{t("a.users.license")}</Label><Input dir="ltr" value={f.licenseNumber} onChange={(e) => setF({ ...f, licenseNumber: e.target.value })} /></div>}
+        <div><Label>{t("a.users.newPassword")}</Label><Input dir="ltr" type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button disabled={!ready} onClick={async () => { if (await post("create-user", f)) setF(empty); }}>{t("a.users.createBtn")}</Button>
+        <span className="text-xs text-muted">{t("a.users.createNote")}</span>
+      </div>
+    </CardContent></Card>
   );
 }
 

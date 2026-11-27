@@ -6,7 +6,7 @@ import { readJson, logAudit } from "@/lib/api-utils";
 import { invalidateUserTokens } from "@/lib/auth";
 import { hashPassword } from "@/lib/auth";
 import { getAllSettings, setSetting, SETTING_DEFAULTS } from "@/lib/settings";
-import { isStrongPassword, normalizePhone } from "@/lib/helpers";
+import { isStrongPassword, isValidEmail, normalizePhone } from "@/lib/helpers";
 
 /**
  * GET/POST /api/admin/[section] — الإدارة أرقام مجمعة فقط.
@@ -226,6 +226,34 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ section: s
     if (!newActive) await invalidateUserTokens(id);
     await logAudit(newActive ? "USER_ACTIVATE" : "USER_DEACTIVATE", { req, actorUserId: user.id, actorRole: user.role, entityType: "User", entityId: id });
     return jsonOk({ ok: true, isActive: newActive });
+  }
+
+  // ---------- users: إنشاء حساب دكتور / مسؤول طبي (لا يوجد تسجيل ذاتي لهذه الأدوار) ----------
+  if (section === "users" && op === "create-user") {
+    const role = String(body.role ?? "");
+    if (role !== "DOCTOR" && role !== "MEDICAL_OFFICER") return jsonError("INVALID_ROLE", 400);
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const fullName = String(body.fullName ?? "").trim().slice(0, 120);
+    const password = String(body.password ?? "");
+    const specialty = String(body.specialty ?? "").trim().slice(0, 120);
+    const licenseNumber = String(body.licenseNumber ?? "").trim().slice(0, 80);
+    if (!isValidEmail(email)) return jsonError("INVALID_EMAIL", 400);
+    if (fullName.length < 3) return jsonError("INVALID_NAME", 400);
+    if (!isStrongPassword(password)) return jsonError("WEAK_PASSWORD", 400);
+    if (role === "DOCTOR" && (!specialty || !licenseNumber)) return jsonError("MISSING_FIELDS", 400);
+    if (await db.user.findUnique({ where: { email } })) return jsonError("EMAIL_EXISTS", 409);
+    const created = await db.user.create({
+      data: {
+        email,
+        fullName,
+        role: role as never,
+        passwordHash: await hashPassword(password),
+        ...(role === "DOCTOR" ? { doctorProfile: { create: { specialty, licenseNumber, isVerified: true } } } : {}),
+      },
+      select: { id: true },
+    });
+    await logAudit("USER_CREATE", { req, actorUserId: user.id, actorRole: user.role, entityType: "User", entityId: created.id, meta: { role } });
+    return jsonOk({ id: created.id }, 201);
   }
 
   // ---------- doctors: توثيق ----------

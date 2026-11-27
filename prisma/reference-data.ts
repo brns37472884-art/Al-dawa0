@@ -131,7 +131,7 @@ export async function seedSohagNetwork(): Promise<Record<number, string>> {
 // ---------------- البيانات المرجعية المشتركة ----------------
 export async function seedReferenceData(): Promise<void> {
   for (const p of PLANS) {
-    await db.plan.upsert({ where: { key: p.key }, create: { ...p }, update: { ...p } });
+    await db.plan.upsert({ where: { key: p.key }, create: { ...p }, update: {} }); // لا نكتب فوق أسعار عدّلتها الإدارة
   }
   for (const c of CATALOG) {
     await db.testCatalog.upsert({ where: { key: c.key }, create: { ...c }, update: { ...c } });

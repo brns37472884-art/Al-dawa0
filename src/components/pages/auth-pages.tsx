@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/lib/i18n";
-import { roleHome } from "@/hooks/use-session";
+import { roleHome, useSession } from "@/hooks/use-session";
 import { api, ApiError } from "@/lib/api";
 import { Navbar, Footer } from "@/components/layout/public-chrome";
 import { Button, Card, CardContent, Input, Label, Checkbox, Badge, Progress } from "@/components/ui/core";
@@ -11,7 +11,7 @@ import { AlertCircle } from "lucide-react";
 const ERROR_KEYS = [
   "INVALID_CREDENTIALS", "EMAIL_EXISTS", "PHONE_EXISTS", "INVALID_PHONE", "OTP_EXPIRED", "OTP_INVALID",
   "MFA_EXPIRED", "MFA_INVALID", "RATE_LIMITED", "WEAK_PASSWORD", "INVALID_EMAIL", "CONSENT_REQUIRED",
-  "INVALID_NAME", "INVALID_DOB", "INVALID_GENDER", "OTP_MISSING", "REGISTER_FAILED",
+  "INVALID_NAME", "INVALID_DOB", "INVALID_GENDER", "OTP_MISSING", "REGISTER_FAILED", "ORIGIN_FORBIDDEN",
 ];
 
 function ErrMsg({ code }: { code: string }) {
@@ -23,6 +23,7 @@ function ErrMsg({ code }: { code: string }) {
 export function LoginPage() {
   const { t } = useLang();
   const router = useRouter();
+  const { refresh } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -42,6 +43,9 @@ export function LoginPage() {
         setDemoCode(d.demoCode ?? null);
         return;
       }
+      // مهم: SessionProvider يحمّل الجلسة مرة واحدة عند فتح الموقع (قبل الدخول)، فبدون refresh()
+      // تبقى user=null وتعيدك لوحة التحكم إلى /login فورًا رغم نجاح الدخول.
+      await refresh();
       router.replace(roleHome(d.user?.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.code : "ERROR");
@@ -56,6 +60,7 @@ export function LoginPage() {
     setError("");
     try {
       const d = await api<{ user?: { role: string } }>("/api/auth/mfa-verify", { body: { email, code: mfaCode } });
+      await refresh();
       router.replace(roleHome(d.user?.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.code : "ERROR");
@@ -106,6 +111,7 @@ const GOVS = ["القاهرة", "الجيزة", "الإسكندرية", "سوه�
 export function RegisterPage() {
   const { t } = useLang();
   const router = useRouter();
+  const { refresh } = useSession();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -164,6 +170,7 @@ export function RegisterPage() {
           consents: { data: f.cData, ai: f.cAI, doctor: f.cDoctor, labShare: f.cLab, notifications: f.cNotif },
         },
       });
+      await refresh(); // نفس سبب الدخول: حدّث الجلسة قبل فتح /app
       router.replace("/app");
     } catch (err) {
       setError(err instanceof ApiError ? err.code : "ERROR");
