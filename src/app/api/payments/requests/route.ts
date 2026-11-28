@@ -1,3 +1,4 @@
+import { notifyAdmins } from "@/lib/notifications/admin";
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireCapability } from "@/lib/permissions";
@@ -80,5 +81,11 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
   await logAudit("PAYMENT_REQUEST_CREATE", { req, actorUserId: user.id, actorRole: user.role, entityType: "PaymentRequest", entityId: created.id, meta: { planKey: plan.key, method } });
+  await notifyAdmins({
+    titleAr: "طلب دفع جديد", titleEn: "New payment request",
+    bodyAr: `طلب اشتراك ${plan.key} بانتظار المراجعة في تبويب طلبات الدفع.`,
+    bodyEn: `A ${plan.key} subscription request awaits review in Payment requests.`,
+    severity: "WARNING", link: "/admin",
+  });
   return jsonOk({ id: created.id, status: "PENDING" }, 201);
 }

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { readJson } from "@/lib/api-utils";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/helpers";
+import { notifyAdmins } from "@/lib/notifications/admin";
 
 /** POST /api/contact — حفظ رسالة تواصل + rate-limit */
 export async function POST(req: NextRequest) {
@@ -20,5 +21,13 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "INVALID_FIELDS" }, { status: 400 });
   }
   await db.contactMessage.create({ data: { name, email, subject, message } });
+  const reset = subject.startsWith("RESET_PASSWORD");
+  await notifyAdmins({
+    titleAr: reset ? "طلب استعادة كلمة سر" : "رسالة تواصل جديدة",
+    titleEn: reset ? "Password reset request" : "New contact message",
+    bodyAr: reset ? `${email} يطلب كلمة سر جديدة — افتح المستخدمين واضغط «كلمة السر».` : `من ${name} — راجع تبويب التواصل.`,
+    bodyEn: reset ? `${email} asked for a new password — open Users and press "Password".` : `From ${name} — see the Contact tab.`,
+    severity: reset ? "WARNING" : "INFO", link: "/admin",
+  });
   return Response.json({ ok: true }, { status: 201 });
 }

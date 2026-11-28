@@ -78,8 +78,10 @@ export function AdminDashboardPage() {
                   <TD className="space-x-1 space-x-reverse whitespace-nowrap">
                     <Button size="sm" variant="outline" onClick={() => post("toggle-active", { id: u.id })}>{t("a.users.toggle")}</Button>
                     <Button size="sm" variant="outline" onClick={() => {
-                      const pw = window.prompt("كلمة سر جديدة (8 حروف+، حرف ورقم) / New password (8+, letter & digit)");
-                      if (pw) void post("reset-password", { id: u.id, password: pw });
+                      const pw = window.prompt(`${u.email}\nكلمة سر جديدة: 8 خانات على الأقل، فيها حرف إنجليزي ورقم / New password: 8+ chars with a letter and a digit`);
+                      if (!pw) return;
+                      if (pw.length < 8 || !/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) { window.alert("كلمة السر ضعيفة: لازم 8 خانات + حرف إنجليزي + رقم / Weak password"); return; }
+                      void post("reset-password", { id: u.id, password: pw }).then((ok) => window.alert(ok ? `تم تغيير كلمة سر ${u.email} ✅` : "فشل التغيير ❌"));
                     }}>{lang === "ar" ? "كلمة السر" : "Password"}</Button>
                   </TD>
                 </TR>
