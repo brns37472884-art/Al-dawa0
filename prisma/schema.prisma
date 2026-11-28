@@ -800,3 +800,11 @@ model DashboardStat {
 
   @@unique([scope, scopeId, day])
 }
+
+/// تخزين ملفات داخل قاعدة البيانات (STORAGE_PROVIDER=db): يشتغل بين app و worker بلا S3 ولا volume.
+model StoredFile {
+  key       String   @id
+  data      Bytes
+  size      Int
+  createdAt DateTime @default(now())
+}

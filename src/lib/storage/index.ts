@@ -2,6 +2,7 @@ import { mkdir, writeFile, readFile, unlink, stat } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { getEnv } from "@/env";
+import { db } from "@/lib/db";
 
 /**
  * طبقة تخزين مجردة — متوافقة S3 (MinIO محليًا) أو محلي.
@@ -61,6 +62,35 @@ class LocalStorageProvider implements StorageProvider {
     } catch {
       return null;
     }
+  }
+}
+
+/** تخزين في Postgres — مشترك بين app و worker ويصمد أمام إعادة النشر */
+class DbStorageProvider implements StorageProvider {
+  private key(dir: string, name: string) {
+    return `${dir.replace(/\.\./g, "").replace(/[^a-zA-Z0-9_\-/]/g, "_")}/${name.replace(/\.\./g, "").replace(/[^a-zA-Z0-9_.\-]/g, "_")}`;
+  }
+  async save(dir: string, name: string, data: Buffer): Promise<string> {
+    const key = this.key(dir, name);
+    const bytes = new Uint8Array(data);
+    await db.storedFile.upsert({
+      where: { key },
+      create: { key, data: bytes, size: data.length },
+      update: { data: bytes, size: data.length },
+    });
+    return key;
+  }
+  async read(storedPath: string): Promise<Buffer> {
+    const row = await db.storedFile.findUnique({ where: { key: storedPath } });
+    if (!row) throw new Error("STORAGE_NOT_FOUND");
+    return Buffer.from(row.data);
+  }
+  async delete(storedPath: string): Promise<void> {
+    await db.storedFile.deleteMany({ where: { key: storedPath } });
+  }
+  async size(storedPath: string): Promise<number | null> {
+    const row = await db.storedFile.findUnique({ where: { key: storedPath }, select: { size: true } });
+    return row ? row.size : null;
   }
 }
 
@@ -172,22 +202,17 @@ class S3StorageProvider implements StorageProvider {
   }
 }
 
-/** تحذير يُطبع مرة واحدة — تخزين محلي في الإنتاج على Railway خطر (لا volume مشترك) */
-let warnedLocalInProd = false;
-
+/** الافتراضي: db في الإنتاج (آمن على Railway)، local في التطوير */
 export function storage(): StorageProvider {
+  let chosen: string | undefined;
   try {
-    if (getEnv().STORAGE_PROVIDER === "s3") return new S3StorageProvider();
+    chosen = getEnv().STORAGE_PROVIDER;
   } catch {
-    /* env غير جاهز (بناء) — محلي */
+    /* env غير جاهز (بناء) */
   }
-  if (process.env.NODE_ENV === "production" && !warnedLocalInProd) {
-    warnedLocalInProd = true;
-    console.warn(
-      "[STORAGE] ⚠️ STORAGE_PROVIDER=local في بيئة production — على Railway لا يوجد volume مشترك بين app و worker: " +
-        "الملفات المرفوعة لن تُرى بين الخدمات وقد تُفقد عند إعادة النشر. اضبط STORAGE_PROVIDER=s3 + S3_ENDPOINT/S3_BUCKET/S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY."
-    );
-  }
+  if (!chosen) chosen = process.env.NODE_ENV === "production" ? "db" : "local";
+  if (chosen === "s3") return new S3StorageProvider();
+  if (chosen === "db") return new DbStorageProvider();
   return new LocalStorageProvider();
 }
 

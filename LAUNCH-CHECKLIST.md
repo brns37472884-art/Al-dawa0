@@ -15,10 +15,9 @@
 
 نفس `DATABASE_URL` و`REDIS_URL` و`JWT_SECRET` و`LAB_ENC_KEY` و`S3_*` لازم تتحط في خدمة الـ worker كمان.
 
-## 2) التخزين (مهم جداً قبل ما الناس ترفع تحاليل)
-الافتراضي `local` بيضيع مع كل نشر، والـ worker مش بيشوفه. اضبط في الخدمتين:
-`STORAGE_PROVIDER=s3`، `S3_ENDPOINT`، `S3_BUCKET`، `S3_ACCESS_KEY_ID`، `S3_SECRET_ACCESS_KEY`، `S3_REGION`
-(Cloudflare R2 أو Railway Bucket).
+## 2) التخزين
+في الإنتاج الافتراضي بقى `db`: الملفات بتتخزن في Postgres نفسه، فبتصمد أمام إعادة النشر والـ worker بيشوفها، ومش محتاج S3.
+لو الملفات كترت (آلاف التحاليل) اتحول لـ `STORAGE_PROVIDER=s3` (R2 / Railway Bucket) وحط `S3_*` في الخدمتين.
 
 ## 3) بعد أول نشر ناجح
 - [ ] `ADMIN_FORCE_RESET` احذفه بعد ما تدخل.
