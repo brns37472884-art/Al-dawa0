@@ -101,7 +101,7 @@ export function LabDashboardPage() {
 
 export function LabShell({ children }: { children: React.ReactNode }) {
   const { t } = useLang();
-  return <DashboardShell title={t("shell.lab")} nav={LAB_NAV(t)}>{children}</DashboardShell>;
+  return <DashboardShell home="/lab" title={t("shell.lab")} nav={LAB_NAV(t)}>{children}</DashboardShell>;
 }
 
 // ---------- الطلبات الواردة ----------

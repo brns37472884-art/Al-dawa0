@@ -75,7 +75,13 @@ export function AdminDashboardPage() {
                   <TD>{u.fullName}</TD><TD dir="ltr">{u.email}</TD>
                   <TD><Badge tone="info">{u.role}</Badge></TD>
                   <TD><Badge tone={u.isActive ? "success" : "urgent"}>{u.isActive ? t("a.users.active") : t("a.users.suspended")}</Badge></TD>
-                  <TD><Button size="sm" variant="outline" onClick={() => post("toggle-active", { id: u.id })}>{t("a.users.toggle")}</Button></TD>
+                  <TD className="space-x-1 space-x-reverse whitespace-nowrap">
+                    <Button size="sm" variant="outline" onClick={() => post("toggle-active", { id: u.id })}>{t("a.users.toggle")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      const pw = window.prompt("كلمة سر جديدة (8 حروف+، حرف ورقم) / New password (8+, letter & digit)");
+                      if (pw) void post("reset-password", { id: u.id, password: pw });
+                    }}>{lang === "ar" ? "كلمة السر" : "Password"}</Button>
+                  </TD>
                 </TR>
               ))}
             </tbody>
@@ -222,7 +228,7 @@ export function AdminDashboardPage() {
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { t } = useLang();
-  return <DashboardShell title={t("shell.admin")} nav={ADMIN_NAV(t)}>{children}</DashboardShell>;
+  return <DashboardShell home="/admin" title={t("shell.admin")} nav={ADMIN_NAV(t)}>{children}</DashboardShell>;
 }
 
 function LabsTab({ data, post, load }: { data: Record<string, unknown>; post: (op: string, body: Record<string, unknown>, refresh?: boolean) => Promise<boolean>; load: () => void }) {

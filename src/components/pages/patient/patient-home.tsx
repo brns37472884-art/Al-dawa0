@@ -263,7 +263,7 @@ export function PatientHomePage() {
 export function PatientShell({ active, children }: { active: string; children: React.ReactNode }) {
   const { t } = useLang();
   return (
-    <DashboardShell title={t("shell.patient")} nav={PATIENT_NAV(t)}>
+    <DashboardShell home="/app" title={t("shell.patient")} nav={PATIENT_NAV(t)}>
       <div data-active={active}>{children}</div>
     </DashboardShell>
   );

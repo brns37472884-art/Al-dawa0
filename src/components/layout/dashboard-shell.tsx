@@ -23,7 +23,10 @@ export function DashboardShell({
   nav,
   children,
   extraNav,
+  home,
 }: {
+  /** مسار لوحة هذا الغلاف (/app, /doctor, /lab, /admin, /officer) — أي دور آخر يُعاد لوحته */
+  home: string;
   title: string;
   nav: NavItem[];
   children: React.ReactNode;
@@ -49,8 +52,11 @@ export function DashboardShell({
   const rt = useRealtime(onEvent);
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
+    if (loading) return;
+    if (!user) { router.replace("/login"); return; }
+    const mine = roleHome(user.role);
+    if (mine !== home) router.replace(mine);
+  }, [loading, user, router, home]);
 
   useEffect(() => {
     if (!user) return;
@@ -67,7 +73,7 @@ export function DashboardShell({
   if (loading) {
     return <div className="p-10 text-center text-muted">{t("common.loading")}</div>;
   }
-  if (!user) return null;
+  if (!user || roleHome(user.role) !== home) return null;
 
   const doLogout = async () => {
     await logout();

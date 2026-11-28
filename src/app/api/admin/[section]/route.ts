@@ -228,6 +228,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ section: s
     return jsonOk({ ok: true, isActive: newActive });
   }
 
+  // ---------- users: إعادة تعيين كلمة السر (لا يوجد "نسيت كلمة السر" بالبريد دون SMTP) ----------
+  if (section === "users" && op === "reset-password") {
+    const id = String(body.id ?? "");
+    const password = String(body.password ?? "");
+    if (!isStrongPassword(password)) return jsonError("WEAK_PASSWORD", 400);
+    const target = await db.user.findUnique({ where: { id } });
+    if (!target) return jsonError("NOT_FOUND", 404);
+    await db.user.update({ where: { id }, data: { passwordHash: await hashPassword(password) } });
+    await invalidateUserTokens(id); // يقطع كل الجلسات القديمة
+    await logAudit("USER_PASSWORD_RESET", { req, actorUserId: user.id, actorRole: user.role, entityType: "User", entityId: id });
+    return jsonOk({ ok: true });
+  }
+
   // ---------- users: إنشاء حساب دكتور / مسؤول طبي (لا يوجد تسجيل ذاتي لهذه الأدوار) ----------
   if (section === "users" && op === "create-user") {
     const role = String(body.role ?? "");

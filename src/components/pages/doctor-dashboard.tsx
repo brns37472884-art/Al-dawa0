@@ -112,7 +112,7 @@ export function DoctorDashboardPage() {
 
 export function DoctorShell({ children }: { children: React.ReactNode }) {
   const { t } = useLang();
-  return <DashboardShell title={t("shell.doctor")} nav={DOCTOR_NAV(t)}>{children}</DashboardShell>;
+  return <DashboardShell home="/doctor" title={t("shell.doctor")} nav={DOCTOR_NAV(t)}>{children}</DashboardShell>;
 }
 
 // ---------- الحالة ----------

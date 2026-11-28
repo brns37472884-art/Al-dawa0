@@ -186,7 +186,7 @@ export function OfficerDashboardPage() {
 
 export function OfficerShell({ children }: { children: React.ReactNode }) {
   const { t } = useLang();
-  return <DashboardShell title={t("shell.officer")} nav={OFFICER_NAV(t)}>{children}</DashboardShell>;
+  return <DashboardShell home="/officer" title={t("shell.officer")} nav={OFFICER_NAV(t)}>{children}</DashboardShell>;
 }
 
 function DialogNote({ noteFor, note, setNote, onCancel, onSubmit, busy, label }: { noteFor: { id: string; kind: string; op: string } | null; note: string; setNote: (s: string) => void; onCancel: () => void; onSubmit: () => void; busy: boolean; label: string }) {
