@@ -118,7 +118,7 @@ export function DashboardShell({
           </div>
           <div className="flex items-center gap-2">
             {flash && <span className="rounded-full bg-medblue/10 px-3 py-1 text-xs font-bold text-medblue-dark">{flash}</span>}
-            <Link href="/app/notifications" className="relative rounded-xl p-2 hover:bg-lightblue" aria-label={t("shell.nav.notifications")}>
+            <Link href="/notifications" className="relative rounded-xl p-2 hover:bg-lightblue" aria-label={t("shell.nav.notifications")}>
               <Bell className="h-5 w-5 text-navy" />
               {unread > 0 && <span className="absolute -end-1 -top-1 rounded-full bg-urgent px-1.5 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}
             </Link>

@@ -311,6 +311,15 @@ export function OrdersPage() {
 interface NotifItem { id: string; type: string; titleAr: string; titleEn: string; bodyAr: string; bodyEn: string; severity: string; link: string | null; isRead: boolean; createdAt: string }
 
 export function NotificationsPage() {
+  return (
+    <PatientShell active="/app/notifications">
+      <NotificationsContent />
+    </PatientShell>
+  );
+}
+
+/** محتوى الإشعارات بلا غلاف — يُستخدم داخل غلاف أي دور */
+export function NotificationsContent() {
   const { t, lang } = useLang();
   const [items, setItems] = useState<NotifItem[]>([]);
   const load = useCallback(() => api<{ items: NotifItem[] }>("/api/notifications").then((d) => setItems(d.items)).catch(() => {}), []);
@@ -318,7 +327,7 @@ export function NotificationsPage() {
   const markAll = async () => { await api("/api/notifications", { method: "PATCH", body: {} }); load(); };
 
   return (
-    <PatientShell active="/app/notifications">
+    <>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-extrabold text-navy">{t("notif.title")}</h1>
         <Button variant="outline" size="sm" onClick={markAll}>{t("notif.markAll")}</Button>
@@ -338,7 +347,7 @@ export function NotificationsPage() {
           ))}
         </div>
       )}
-    </PatientShell>
+    </>
   );
 }
 
