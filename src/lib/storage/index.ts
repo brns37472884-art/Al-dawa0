@@ -211,6 +211,8 @@ export function storage(): StorageProvider {
     /* env غير جاهز (بناء) */
   }
   if (!chosen) chosen = process.env.NODE_ENV === "production" ? "db" : "local";
+  // في الإنتاج "local" يضيع مع كل نشر ولا يراه الـ worker — نحوّله لـ db إلا لو STORAGE_ALLOW_LOCAL=true
+  if (chosen === "local" && process.env.NODE_ENV === "production" && process.env.STORAGE_ALLOW_LOCAL !== "true") chosen = "db";
   if (chosen === "s3") return new S3StorageProvider();
   if (chosen === "db") return new DbStorageProvider();
   return new LocalStorageProvider();
