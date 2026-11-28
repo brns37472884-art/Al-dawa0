@@ -5,6 +5,8 @@ export async function register() {
   try {
     const { bootstrapAdmin } = await import("@/lib/bootstrap-admin");
     await bootstrapAdmin();
+    const { describeFlags } = await import("@/lib/flags");
+    console.log(`[config] ${describeFlags()}`);
   } catch (e) {
     console.error("[bootstrap] تعذر التشغيل:", e instanceof Error ? e.message : e);
   }
