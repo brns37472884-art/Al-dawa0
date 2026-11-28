@@ -21,7 +21,7 @@ function ErrMsg({ code }: { code: string }) {
 }
 
 export function LoginPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const router = useRouter();
   const { refresh } = useSession();
   const [email, setEmail] = useState("");
@@ -90,6 +90,7 @@ export function LoginPage() {
                 {error && <ErrMsg code={error} />}
                 <Button type="submit" disabled={busy} className="w-full">{t("auth.login")}</Button>
                 <p className="text-center text-sm text-muted"><a href="/register" className="font-bold text-medblue hover:underline">{t("auth.noAccount")}</a></p>
+                <p className="text-center text-sm text-muted"><a href="/forgot-password" className="font-bold text-medblue hover:underline">{lang === "ar" ? "نسيت كلمة السر؟" : "Forgot password?"}</a></p>
               </form>
             ) : (
               <form onSubmit={submitMfa} className="mt-5 space-y-4">
@@ -289,3 +290,65 @@ export function RegisterPage() {
 }
 
 void Badge;
+
+
+/** نسيت كلمة السر — بلا SMTP يصل الطلب للإدارة (تبويب التواصل) وتعيد التعيين يدويًا */
+export function ForgotPasswordPage() {
+  const { lang } = useLang();
+  const ar = lang === "ar";
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  const submit = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      await api("/api/contact", {
+        body: {
+          name,
+          email,
+          subject: "RESET_PASSWORD — طلب إعادة تعيين كلمة السر",
+          message: `طلب إعادة تعيين كلمة السر للحساب: ${email}${phone ? ` — موبايل للتواصل: ${phone}` : ""}`,
+        },
+      });
+      setDone(true);
+    } catch (e) {
+      setErr(e instanceof ApiError && e.code === "RATE_LIMITED" ? (ar ? "محاولات كثيرة، حاول لاحقًا" : "Too many attempts, try later") : ar ? "تأكد من الاسم (3 أحرف+) والبريد" : "Check your name (3+ chars) and email");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Navbar />
+      <main className="mx-auto flex min-h-[70vh] max-w-md items-center px-4 py-10">
+        <Card className="w-full">
+          <CardContent className="space-y-4 p-6">
+            <h1 className="text-xl font-extrabold text-navy">{ar ? "نسيت كلمة السر" : "Forgot password"}</h1>
+            {done ? (
+              <p className="rounded-xl bg-success/10 p-3 text-sm text-ink">
+                {ar ? "وصل طلبك للإدارة. هيتم التواصل معاك وتعيين كلمة سر جديدة." : "Your request reached the admin. You will be contacted with a new password."}
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-muted">{ar ? "اكتب بياناتك وهيوصل الطلب للإدارة لتعيين كلمة سر جديدة." : "Enter your details; the admin will set a new password for you."}</p>
+                <div><Label>{ar ? "الاسم" : "Name"}</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+                <div><Label>{ar ? "البريد الإلكتروني للحساب" : "Account email"}</Label><Input dir="ltr" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+                <div><Label>{ar ? "رقم موبايل للتواصل (اختياري)" : "Contact mobile (optional)"}</Label><Input dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+                {err && <p className="flex items-center gap-1 text-sm text-urgent"><AlertCircle className="h-4 w-4" />{err}</p>}
+                <Button className="w-full" disabled={busy || name.trim().length < 3 || !email.includes("@")} onClick={submit}>{ar ? "إرسال الطلب" : "Send request"}</Button>
+              </>
+            )}
+            <p className="text-center text-sm"><a href="/login" className="font-bold text-medblue hover:underline">{ar ? "العودة لتسجيل الدخول" : "Back to login"}</a></p>
+          </CardContent>
+        </Card>
+      </main>
+      <Footer />
+    </>
+  );
+}

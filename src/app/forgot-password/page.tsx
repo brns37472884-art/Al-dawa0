@@ -1,0 +1,6 @@
+"use client";
+import { ForgotPasswordPage } from "@/components/pages/auth-pages";
+
+export default function Page() {
+  return <ForgotPasswordPage />;
+}
